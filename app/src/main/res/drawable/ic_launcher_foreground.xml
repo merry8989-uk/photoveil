@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Shield body -->
+    <path
+        android:fillColor="#7C5CFF"
+        android:pathData="M54,24 L82,35 L82,58 C82,75 70,86 54,92 C38,86 26,75 26,58 L26,35 Z" />
+
+    <!-- Inner cut-out -->
+    <path
+        android:fillColor="#0B0B12"
+        android:pathData="M54,33 L73,41 L73,58 C73,70 65,78 54,83 C43,78 35,70 35,58 L35,41 Z" />
+
+    <!-- Keyhole -->
+    <path
+        android:fillColor="#3BE0C0"
+        android:pathData="M54,46 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <path
+        android:fillColor="#3BE0C0"
+        android:pathData="M51.5,50 L56.5,50 L58,66 L50,66 Z" />
+</vector>

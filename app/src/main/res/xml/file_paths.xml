@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Downloaded update APK (in-app updater). -->
+    <cache-path name="updates" path="." />
+    <!-- Diagnostics exports before they are shared. -->
+    <cache-path name="exports" path="exports/" />
+    <!-- Diagnostics log file. -->
+    <files-path name="logs" path="logs/" />
+    <!-- Shielded images kept in the app's own Pictures folder. -->
+    <external-files-path name="pictures" path="Pictures/" />
+</paths>

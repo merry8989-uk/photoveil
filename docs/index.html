@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PhotoVeil — invisible armour for your photos</title>
+<meta name="description" content="PhotoVeil adds an imperceptible shield to your photos on-device, so AI image editors cannot cleanly reuse them. Free Android app, open source, no upload, no account." />
+<meta name="theme-color" content="#0B0B12" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Cpath fill='%237C5CFF' d='M54 24 L82 35 L82 58 C82 75 70 86 54 92 C38 86 26 75 26 58 L26 35 Z'/%3E%3Cpath fill='%230B0B12' d='M54 33 L73 41 L73 58 C73 70 65 78 54 83 C43 78 35 70 35 58 L35 41 Z'/%3E%3Ccircle cx='54' cy='55' r='6' fill='%233BE0C0'/%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#0B0B12; --panel:#12121C; --panel2:#171724; --line:#26263a;
+    --ink:#ECEBF5; --muted:#A5A2BC; --violet:#7C5CFF; --teal:#3BE0C0; --amber:#FFB443;
+    --max:1120px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(124,92,255,.20), transparent 60%),
+      radial-gradient(700px 420px at 92% 4%, rgba(59,224,192,.12), transparent 62%);
+  }
+  .wrap{position:relative; z-index:1; max-width:var(--max); margin:0 auto; padding:0 22px}
+  a{color:var(--teal); text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1,h2,h3{line-height:1.18; letter-spacing:-.02em; margin:0 0 .5em}
+  h1{font-size:clamp(2.1rem,5.2vw,3.6rem); font-weight:800}
+  h2{font-size:clamp(1.45rem,2.6vw,2rem); font-weight:750}
+  h3{font-size:1.06rem; font-weight:700}
+  p{margin:0 0 1em}
+  .muted{color:var(--muted)}
+  .small{font-size:.875rem}
+
+  header.nav{
+    position:sticky; top:0; z-index:20; backdrop-filter:blur(14px);
+    background:rgba(11,11,18,.78); border-bottom:1px solid var(--line);
+  }
+  .nav-in{display:flex; align-items:center; gap:18px; height:62px}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:750; letter-spacing:-.01em}
+  .brand svg{width:26px; height:26px}
+  .nav-links{margin-left:auto; display:flex; gap:20px; align-items:center}
+  .nav-links a{color:var(--muted); font-size:.9rem; font-weight:550}
+  .nav-links a:hover{color:var(--ink); text-decoration:none}
+  @media(max-width:760px){ .nav-links a:not(.btn){display:none} }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding:12px 20px; border-radius:12px; font-weight:650; font-size:.95rem;
+    border:1px solid transparent; cursor:pointer; transition:transform .12s ease, filter .12s ease;
+  }
+  .btn:hover{transform:translateY(-1px); text-decoration:none}
+  .btn-primary{background:linear-gradient(180deg,#8B6FFF,#6C4BFF); color:#fff; box-shadow:0 8px 26px rgba(124,92,255,.32)}
+  .btn-ghost{background:rgba(255,255,255,.04); border-color:var(--line); color:var(--ink)}
+  .btn-teal{background:var(--teal); color:#04231D}
+
+  section{padding:64px 0; border-bottom:1px solid var(--line)}
+  section:last-of-type{border-bottom:none}
+
+  .hero{padding:76px 0 60px}
+  .pill{
+    display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px;
+    border:1px solid var(--line); background:rgba(255,255,255,.03); font-size:.8rem; color:var(--muted);
+    margin-bottom:22px;
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--teal); box-shadow:0 0 10px var(--teal)}
+  .hero p.lead{font-size:1.13rem; color:var(--muted); max-width:62ch}
+  .hero-actions{display:flex; flex-wrap:wrap; gap:12px; margin-top:26px}
+  .hero-note{margin-top:16px; font-size:.83rem; color:var(--muted)}
+
+  .grid{display:grid; gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:860px){ .g3,.g2{grid-template-columns:1fr} }
+
+  .card{
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--line); border-radius:16px; padding:20px;
+  }
+  .card h3{margin-bottom:.35em}
+  .card p{margin:0; color:var(--muted); font-size:.92rem}
+  .num{
+    width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+    background:rgba(124,92,255,.16); color:#C9BAFF; font-weight:700; font-size:.85rem; margin-bottom:12px;
+  }
+
+  /* Demo */
+  .demo{
+    background:linear-gradient(180deg,#151522,#101019);
+    border:1px solid var(--line); border-radius:20px; padding:20px;
+  }
+  .demo-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px}
+  @media(max-width:860px){ .demo-grid{grid-template-columns:1fr} }
+  .canvas-box{
+    position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--line);
+    background:#0A0A10; min-height:220px; display:grid; place-items:center;
+  }
+  .canvas-box canvas{max-width:100%; display:block}
+  .canvas-box .placeholder{color:var(--muted); font-size:.88rem; padding:34px; text-align:center}
+  .canvas-label{
+    position:absolute; top:10px; left:10px; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase;
+    background:rgba(11,11,18,.8); border:1px solid var(--line); border-radius:8px; padding:3px 8px; color:var(--muted);
+  }
+  .controls{display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; margin-top:16px}
+  .field{display:flex; flex-direction:column; gap:6px; font-size:.8rem; color:var(--muted)}
+  select,input[type=range]{
+    background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:10px;
+    padding:9px 10px; font:inherit; font-size:.88rem;
+  }
+  input[type=range]{padding:0; height:34px; accent-color:var(--violet)}
+  .stats{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); gap:10px; margin-top:16px;
+  }
+  .stat{background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:12px; padding:10px 12px}
+  .stat b{display:block; font-size:1.06rem; letter-spacing:-.01em}
+  .stat span{font-size:.73rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em}
+  .drop{
+    border:1.5px dashed #34344e; border-radius:14px; padding:26px; text-align:center; color:var(--muted);
+    cursor:pointer; transition:border-color .15s, background .15s; font-size:.92rem;
+  }
+  .drop:hover,.drop.over{border-color:var(--violet); background:rgba(124,92,255,.07); color:var(--ink)}
+
+  table{width:100%; border-collapse:collapse; font-size:.9rem}
+  th,td{text-align:left; padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{color:var(--muted); font-weight:600; font-size:.78rem; text-transform:uppercase; letter-spacing:.05em}
+  td code{background:rgba(255,255,255,.05); padding:1px 6px; border-radius:6px; font-size:.85em}
+
+  .list{list-style:none; padding:0; margin:0; display:grid; gap:10px}
+  .list li{display:flex; gap:11px; font-size:.94rem; color:var(--muted)}
+  .list li::before{content:""; flex:0 0 7px; height:7px; margin-top:8px; border-radius:50%; background:var(--violet)}
+  .list.teal li::before{background:var(--teal)}
+  .list.amber li::before{background:var(--amber)}
+
+  .warn{background:rgba(255,180,67,.08); border:1px solid rgba(255,180,67,.3); border-radius:14px; padding:18px}
+  .warn h3{color:var(--amber)}
+
+  footer{padding:52px 0 64px; color:var(--muted); font-size:.9rem}
+  .foot-grid{display:flex; flex-wrap:wrap; gap:26px; justify-content:space-between; align-items:flex-start}
+  .foot-cta{
+    background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line);
+    border-radius:16px; padding:20px; max-width:420px;
+  }
+  .foot-cta a.ig{
+    display:inline-flex; align-items:center; gap:8px; margin-top:10px; font-weight:650; color:var(--ink);
+    background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:11px; padding:9px 14px;
+  }
+  .foot-cta a.ig:hover{text-decoration:none; border-color:var(--violet)}
+  code.inline{background:rgba(255,255,255,.06); padding:2px 7px; border-radius:6px; font-size:.86em}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <div class="brand">
+      <svg viewBox="0 0 108 108" aria-hidden="true">
+        <path fill="#7C5CFF" d="M54 24 L82 35 L82 58 C82 75 70 86 54 92 C38 86 26 75 26 58 L26 35 Z"/>
+        <path fill="#0B0B12" d="M54 33 L73 41 L73 58 C73 70 65 78 54 83 C43 78 35 70 35 58 L35 41 Z"/>
+        <circle cx="54" cy="55" r="6" fill="#3BE0C0"/>
+      </svg>
+      PhotoVeil
+    </div>
+    <nav class="nav-links">
+      <a href="#demo">Try it</a>
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#limits">Limits</a>
+      <a class="btn btn-primary" href="https://github.com/merry8989-uk/photoveil/releases/latest">Download APK</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero" style="border-bottom:1px solid var(--line)">
+    <div class="pill"><span class="dot"></span> v1.0.0 · free · open source · no account</div>
+    <h1>Invisible armour<br/>for your photos.</h1>
+    <p class="lead">
+      AI editors can now rebuild a photo you posted — swap a face, change a
+      scene, remove a person. PhotoVeil adds a shield to the pixels that you
+      cannot see, and that an image model cannot cleanly step around. It runs
+      entirely on your phone: nothing is uploaded, nothing is logged, no account
+      is needed.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://github.com/merry8989-uk/photoveil/releases/latest">
+        Download the APK
+      </a>
+      <a class="btn btn-ghost" href="#demo">Shield a photo in your browser</a>
+    </div>
+    <p class="hero-note">
+      Android 8.0+ · ~4 MB · signed builds published from GitHub Actions ·
+      <a href="https://github.com/merry8989-uk/photoveil">source</a>
+    </p>
+  </section>
+
+  <section>
+    <div class="grid g3">
+      <div class="card">
+        <div class="num">1</div>
+        <h3>It stays on the device</h3>
+        <p>The whole engine is arithmetic over pixels. No model download, no
+           network call, no telemetry. Turn off mobile data and it works exactly
+           the same.</p>
+      </div>
+      <div class="card">
+        <div class="num">2</div>
+        <h3>You can see that it is there</h3>
+        <p>Every run reports what it actually changed — average delta, largest
+           delta, how many pixels moved, and the resulting PSNR. No black box.</p>
+      </div>
+      <div class="card">
+        <div class="num">3</div>
+        <h3>You can check it later</h3>
+        <p>Compare the file you have now against the original. PhotoVeil tells
+           you whether the shield survived, or whether a resize or an edit
+           replaced it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="demo">
+    <h2>Try the exact algorithm, right here</h2>
+    <p class="muted" style="max-width:66ch">
+      This is not a video or a mock-up. The same perturbation the app applies is
+      running in this page, in JavaScript, on the photo you pick. Nothing leaves
+      your browser — the file is read locally by the canvas.
+    </p>
+
+    <div class="demo">
+      <div class="drop" id="drop">
+        <strong>Pick a photo</strong> or drop one here
+        <div class="small" style="margin-top:6px">JPG, PNG or WebP · processed locally · nothing uploaded</div>
+        <input type="file" id="file" accept="image/*" hidden />
+      </div>
+
+      <div class="controls">
+        <label class="field">Mode
+          <select id="mode">
+            <option value="standard" selected>Standard — invisible</option>
+            <option value="strong">Strong — heavier, still invisible</option>
+          </select>
+        </label>
+        <label class="field" style="flex:1; min-width:220px">Strength — <span id="strengthLabel">0.60</span> (max <span id="ampLabel">9.2</span>/255)
+          <input type="range" id="strength" min="10" max="100" value="60" />
+        </label>
+        <button class="btn btn-primary" id="shieldBtn" disabled>Shield this photo</button>
+        <button class="btn btn-ghost" id="diffBtn" disabled>Show difference ×20</button>
+        <button class="btn btn-teal" id="downloadBtn" disabled>Download PNG</button>
+      </div>
+
+      <div class="demo-grid">
+        <div class="canvas-box">
+          <span class="canvas-label">Original</span>
+          <div class="placeholder" id="ph1">Your photo appears here</div>
+          <canvas id="canvasIn" hidden></canvas>
+        </div>
+        <div class="canvas-box">
+          <span class="canvas-label" id="outLabel">Shielded</span>
+          <div class="placeholder" id="ph2">The shielded result appears here</div>
+          <canvas id="canvasOut" hidden></canvas>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><b id="sMean">—</b><span>mean change /255</span></div>
+        <div class="stat"><b id="sMax">—</b><span>largest change</span></div>
+        <div class="stat"><b id="sPct">—</b><span>pixels touched</span></div>
+        <div class="stat"><b id="sPsnr">—</b><span>PSNR</span></div>
+        <div class="stat"><b id="sTime">—</b><span>compute time</span></div>
+      </div>
+      <p class="small muted" style="margin:14px 0 0">
+        PSNR above ~42 dB is imperceptible in practice. The "difference ×20"
+        view is the only way to see the shield with your eyes — that is the point.
+      </p>
+    </div>
+  </section>
+
+  <section id="how">
+    <h2>How the shield works</h2>
+    <p class="muted" style="max-width:66ch">
+      The idea is borrowed from PhotoGuard (Salman et al., <em>Raising the Cost of
+      Malicious AI-Powered Image Editing</em>): push the image into a region of
+      pixel space where a diffusion model's encoder no longer lands on the thing
+      you photographed. PhotoGuard does that with gradients through Stable
+      Diffusion's VAE on a GPU. A phone has neither, so PhotoVeil takes the
+      gradient-free route.
+    </p>
+    <div class="grid g3" style="margin-top:22px">
+      <div class="card">
+        <div class="num">A</div>
+        <h3>Band-shaped noise</h3>
+        <p>A seeded, deterministic noise field is split: half low-passed with a
+           five-tap kernel, half high-passed with a Laplacian. That puts energy
+           where a VAE's 8× downsampling folds detail back into the latent, and
+           keeps a share of it in the band that survives re-encoding.</p>
+      </div>
+      <div class="card">
+        <div class="num">B</div>
+        <h3>Texture-masked</h3>
+        <p>Amplitude follows local texture. Busy areas absorb it invisibly; flat
+           gradients like skin and sky get the least. The eye forgives noise
+           where there is already detail.</p>
+      </div>
+      <div class="card">
+        <div class="num">C</div>
+        <h3>Clamped, not faded</h3>
+        <p>The per-pixel delta is clamped to the room the pixel actually has, so
+           a near-white pixel gets a downward nudge instead of being skipped.
+           No banding, no blown highlights, no dead zones.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <h2>What is in the app</h2>
+    <div class="grid g2">
+      <div class="card">
+        <h3>Shield tab</h3>
+        <ul class="list">
+          <li>Pick up to 10 photos at once and shield them in a batch</li>
+          <li>Three modes: Standard, Strong, and Visible (adds a faint repeated stamp)</li>
+          <li>Strength slider, with the real amplitude in /255 shown live</li>
+          <li>Per-image report: mean change, largest change, pixels touched, noise floor before → after, compute time</li>
+          <li>Share straight to any app, or copy into the device gallery</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Vault tab</h3>
+        <ul class="list">
+          <li>Every shielded image is kept in the app's own folder</li>
+          <li>Thumbnails, file size and timestamp for each</li>
+          <li>Share or delete any of them, with a confirmation before deleting</li>
+          <li>Refresh on demand; nothing is synced anywhere</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Check tab</h3>
+        <ul class="list">
+          <li>Pick the original and the file you hold now</li>
+          <li>Mean difference, share of pixels differing, and how fine-grained the difference is</li>
+          <li>Verdict: shield intact, no shield between these files, or the image was edited</li>
+          <li>File details: dimensions, noise floor, whether EXIF and GPS survived</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Settings and upkeep</h3>
+        <ul class="list">
+          <li>Theme (light / dark / system), five accent colours, text size and density</li>
+          <li>Shield defaults: mode, strength, fresh seed per image, visible-stamp text</li>
+          <li>Output: PNG or JPEG, JPEG quality, largest side (2048–6000 px), save to gallery, auto-share</li>
+          <li>Diagnostics: log collection on by default, export as .txt / .json / .md / .zip, share, clear</li>
+          <li>In-app updates: checks the latest GitHub Release and installs it without a browser</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Every setting, explained</h2>
+    <table>
+      <thead><tr><th>Setting</th><th>What it does</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td>Theme</td><td>Light, dark, or follow the system.</td><td>System</td></tr>
+        <tr><td>Accent colour</td><td>Violet, teal, blue, amber or rose, applied app-wide immediately.</td><td>Violet</td></tr>
+        <tr><td>Text size</td><td>Scales all text from 0.85× to 1.4×.</td><td>1.00×</td></tr>
+        <tr><td>Density</td><td>Scales spacing and controls from 0.85× to 1.15×.</td><td>1.00×</td></tr>
+        <tr><td>Mode</td><td>Standard (max 14/255), Strong (max 30/255), or Visible (invisible shield plus a faint stamp).</td><td>Standard</td></tr>
+        <tr><td>Strength</td><td>Scales amplitude within the mode's range. Higher is harder to undo and marginally easier to spot on a big screen.</td><td>0.60</td></tr>
+        <tr><td>Fresh seed per image</td><td>Each photo gets its own perturbation pattern instead of one shared pattern for the batch.</td><td>On</td></tr>
+        <tr><td>Visible-mode stamp text</td><td>The repeated text burned into Visible-mode output (up to 24 characters).</td><td>AI-PROTECTED</td></tr>
+        <tr><td>Output format</td><td>PNG keeps the shield exactly as computed; JPEG re-compresses and loses part of it.</td><td>PNG</td></tr>
+        <tr><td>JPEG quality</td><td>60–100, only used when the output format is JPEG.</td><td>92</td></tr>
+        <tr><td>Largest side</td><td>Downsamples big photos before shielding to bound memory use.</td><td>4096 px</td></tr>
+        <tr><td>Save to device gallery</td><td>Also writes each result into Pictures/PhotoVeil so other apps can see it.</td><td>On</td></tr>
+        <tr><td>Open share sheet after shielding</td><td>Jumps to the share sheet when a batch finishes.</td><td>Off</td></tr>
+        <tr><td>Notifications</td><td>Allows notices about finished batches and new versions.</td><td>On</td></tr>
+        <tr><td>Haptics</td><td>A short buzz when a shield completes.</td><td>On</td></tr>
+        <tr><td>Collect logs</td><td>Diagnostics logging. On by default so a bug can be fixed without you reproducing it. Turning it off stops new entries; existing logs can still be exported or cleared.</td><td>On</td></tr>
+        <tr><td>Export format</td><td>Logs as .txt, .json, .md or .zip, shared through the system share sheet.</td><td>.txt</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <div class="grid g3">
+      <div class="card">
+        <div class="num">1</div>
+        <h3>Download the APK</h3>
+        <p>Grab the latest signed release from
+           <a href="https://github.com/merry8989-uk/photoveil/releases/latest">GitHub Releases</a>.
+           Every build is produced and signed by GitHub Actions from this
+           repository's source.</p>
+      </div>
+      <div class="card">
+        <div class="num">2</div>
+        <h3>Allow the install</h3>
+        <p>Android will ask you to allow installs from your browser or file
+           manager the first time. That is the normal side-loading prompt — the
+           APK is signed, and the signature never changes between versions.</p>
+      </div>
+      <div class="card">
+        <div class="num">3</div>
+        <h3>Updates come from inside the app</h3>
+        <p>Settings → About → <em>Check for updates</em> reads the latest GitHub
+           Release, downloads the APK and hands it to the installer. It installs
+           over the current version, so you never uninstall first.</p>
+      </div>
+    </div>
+    <p class="small muted" style="margin-top:18px">
+      Requires Android 8.0 (API 26) or newer. Package ID
+      <code class="inline">io.github.merry8989uk.photoveil</code>.
+      Builds from source: <code class="inline">./gradlew assembleDebug</code>.
+    </p>
+  </section>
+
+  <section id="limits">
+    <h2>What it does not do</h2>
+    <div class="warn">
+      <h3>Read this before you trust it with something that matters</h3>
+      <ul class="list amber">
+        <li><strong>It is a deterrent, not a lock.</strong> A determined person
+            with a good model can still edit your photo. The shield raises the
+            cost and the visible damage; it does not make editing impossible.</li>
+        <li><strong>JPEG erodes it.</strong> Measured here: a re-save at quality
+            90 removes a large part of the perturbation. That is true of any
+            invisible shield. If you can, share the PNG the app gives you.</li>
+        <li><strong>Resizing destroys it.</strong> Any crop, scale or
+            screenshot-and-repost resamples the pixels and takes the shield with
+            it.</li>
+        <li><strong>It does not stop training scrapes.</strong> A model trained
+            on a web-scale crawl will still see your image. This protects a
+            specific file against a specific kind of editing, not your whole
+            online presence.</li>
+        <li><strong>The check tab measures, it does not prove.</strong> It
+            reports a real number and a verdict with stated limits. A high-ISO
+            photo and a shielded photo can look alike.</li>
+      </ul>
+    </div>
+    <p class="small muted" style="margin-top:18px">
+      Credit where it is due: the approach follows PhotoGuard by Hadi Salman,
+      Alaa Khaddaj, Guillaume Leclerc, Andrew Ilyas and Aleksander Madry
+      (<a href="https://arxiv.org/abs/2302.06588">arXiv:2302.06588</a>). This
+      project shares the idea, not the code — the implementation here is a
+      gradient-free on-device engine written from scratch in Kotlin and
+      JavaScript.
+    </p>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-grid">
+    <div style="max-width:420px">
+      <div class="brand" style="margin-bottom:10px">
+        <svg viewBox="0 0 108 108" aria-hidden="true" style="width:22px;height:22px">
+          <path fill="#7C5CFF" d="M54 24 L82 35 L82 58 C82 75 70 86 54 92 C38 86 26 75 26 58 L26 35 Z"/>
+          <path fill="#0B0B12" d="M54 33 L73 41 L73 58 C73 70 65 78 54 83 C43 78 35 70 35 58 L35 41 Z"/>
+          <circle cx="54" cy="55" r="6" fill="#3BE0C0"/>
+        </svg>
+        PhotoVeil
+      </div>
+      <p class="small">
+        Built by Amit. Free, open source, and offline by design. Bugs, ideas and
+        feature requests are all welcome — the fastest way to reach me is email.
+      </p>
+      <p class="small">
+        <a href="mailto:br19shc39@gmail.com">br19shc39@gmail.com</a> ·
+        <a href="https://github.com/merry8989-uk/photoveil">GitHub</a> ·
+        <a href="https://github.com/merry8989-uk/photoveil/releases/latest">Releases</a>
+      </p>
+      <p class="small" style="margin:0">MIT licensed · v1.0.0</p>
+    </div>
+
+    <div class="foot-cta">
+      <strong>Follow @osintgram_io on Instagram</strong>
+      <p class="small" style="margin:8px 0 0">
+        New builds, what I am working on next, and the odd experiment go up there
+        first. Got a suggestion, a bug, or a feature you want in PhotoVeil?
+        Follow and send a DM — it genuinely shapes what gets built next.
+      </p>
+      <a class="ig" href="https://instagram.com/osintgram_io" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/>
+        </svg>
+        Follow @osintgram_io
+      </a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ------------------------------------------------------------------
+   PhotoVeil shield engine — JavaScript port.
+   Identical constants and maths to ShieldEngine.kt in the Android app.
+   ------------------------------------------------------------------ */
+const MASK_FLOOR = 0.32, TEXTURE_GAIN = 2.2, MID_SHARE = 0.5;
+
+function amplitudeFor(mode, strength) {
+  return mode === 'strong' ? 5.0 + 25.0 * strength : 2.0 + 12.0 * strength;
+}
+
+function hash01(x, y, seed) {
+  let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 1274126177)) | 0;
+  h = Math.imul(h ^ (h >> 13), 1274126177);
+  h = h ^ (h >> 16);
+  return ((h & 0xFFFF) / 65535) * 2 - 1;
+}
+
+function fiveTapH(src, w, h) {
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const b = y * w;
+    for (let x = 0; x < w; x++) {
+      const a = src[b + Math.max(0, x - 2)];
+      const c = src[b + Math.max(0, x - 1)];
+      const d = src[b + x];
+      const e = src[b + Math.min(w - 1, x + 1)];
+      const f = src[b + Math.min(w - 1, x + 2)];
+      out[b + x] = (a + 2 * c + 3 * d + 2 * e + f) / 9;
+    }
+  }
+  return out;
+}
+
+function fiveTapV(src, w, h) {
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const r0 = Math.max(0, y - 2) * w, r1 = Math.max(0, y - 1) * w;
+    const r2 = y * w, r3 = Math.min(h - 1, y + 1) * w, r4 = Math.min(h - 1, y + 2) * w;
+    for (let x = 0; x < w; x++) {
+      out[r2 + x] = (src[r0 + x] + 2 * src[r1 + x] + 3 * src[r2 + x]
+        + 2 * src[r3 + x] + src[r4 + x]) / 9;
+    }
+  }
+  return out;
+}
+
+function shieldPixels(imgData, mode, strength, seed) {
+  const w = imgData.width, h = imgData.height;
+  const px = imgData.data;
+  const amp = amplitudeFor(mode, strength);
+
+  // 1. Deterministic noise field.
+  const hash = new Float32Array(w * h);
+  let i = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) hash[i++] = hash01(x, y, seed);
+  }
+  // 2. Low-passed half (separable 5-tap, horizontally then vertically).
+  const mid = fiveTapV(fiveTapH(hash, w, h), w, h);
+
+  const out = new Uint8ClampedArray(px.length);
+  let sumAbs = 0, maxAbs = 0, changed = 0, sumSq = 0;
+
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    const up = Math.max(0, y - 1) * w;
+    const down = Math.min(h - 1, y + 1) * w;
+    for (let x = 0; x < w; x++) {
+      const p = (row + x) * 4;
+      const r = px[p], g = px[p + 1], b = px[p + 2];
+
+      const xm = row + (x > 0 ? x - 1 : x);
+      const xp = row + (x < w - 1 ? x + 1 : x);
+
+      const lc = 0.299 * r + 0.587 * g + 0.114 * b;
+      const lx1 = 0.299 * px[xp * 4] + 0.587 * px[xp * 4 + 1] + 0.114 * px[xp * 4 + 2];
+      const lx0 = 0.299 * px[xm * 4] + 0.587 * px[xm * 4 + 1] + 0.114 * px[xm * 4 + 2];
+      const ly1 = 0.299 * px[(down + x) * 4] + 0.587 * px[(down + x) * 4 + 1] + 0.114 * px[(down + x) * 4 + 2];
+      const ly0 = 0.299 * px[(up + x) * 4] + 0.587 * px[(up + x) * 4 + 1] + 0.114 * px[(up + x) * 4 + 2];
+      const texture = Math.min(1, Math.max(0, (Math.abs(lx1 - lx0) + Math.abs(ly1 - ly0)) * 0.5 / 255));
+      const mask = Math.min(1, MASK_FLOOR + TEXTURE_GAIN * texture);
+
+      let high = (4 * hash[row + x] - hash[xm] - hash[xp] - hash[up + x] - hash[down + x]) / 6;
+      high = Math.max(-1, Math.min(1, high));
+      let midv = Math.max(-1, Math.min(1, mid[row + x]));
+      const field = MID_SHARE * midv + (1 - MID_SHARE) * high;
+
+      const lo = -Math.min(r, g, b);
+      const hi = 255 - Math.max(r, g, b);
+      let delta = field * amp * mask;
+      if (delta < lo) delta = lo; else if (delta > hi) delta = hi;
+
+      const nr = Math.max(0, Math.min(255, r + delta));
+      const ng = Math.max(0, Math.min(255, g + delta));
+      const nb = Math.max(0, Math.min(255, b + delta));
+
+      const ad = Math.abs(nr - r);
+      sumAbs += ad; sumSq += delta * delta;
+      if (ad > maxAbs) maxAbs = ad;
+      if (nr !== r || ng !== g || nb !== b) changed++;
+
+      out[p] = nr; out[p + 1] = ng; out[p + 2] = nb; out[p + 3] = px[p + 3];
+      void lc;
+    }
+  }
+
+  const n = w * h;
+  const mse = sumSq / n;
+  return {
+    data: out,
+    meanAbs: sumAbs / n,
+    maxAbs: maxAbs,
+    changedPct: (changed / n) * 100,
+    psnr: mse > 0 ? 10 * Math.log10((255 * 255) / mse) : 99,
+  };
+}
+
+/* ------------------------------ UI ------------------------------ */
+const fileInput = document.getElementById('file');
+const drop = document.getElementById('drop');
+const canvasIn = document.getElementById('canvasIn');
+const canvasOut = document.getElementById('canvasOut');
+const ph1 = document.getElementById('ph1');
+const ph2 = document.getElementById('ph2');
+const outLabel = document.getElementById('outLabel');
+const shieldBtn = document.getElementById('shieldBtn');
+const diffBtn = document.getElementById('diffBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const modeSel = document.getElementById('mode');
+const strength = document.getElementById('strength');
+const strengthLabel = document.getElementById('strengthLabel');
+const ampLabel = document.getElementById('ampLabel');
+
+let sourceData = null;     // ImageData of the original
+let resultData = null;     // ImageData of the shielded version
+let showingDiff = false;
+
+function readStrength() { return parseInt(strength.value, 10) / 100; }
+
+function updateAmpLabel() {
+  const s = readStrength();
+  strengthLabel.textContent = s.toFixed(2);
+  ampLabel.textContent = amplitudeFor(modeSel.value, s).toFixed(1);
+}
+modeSel.addEventListener('change', updateAmpLabel);
+strength.addEventListener('input', updateAmpLabel);
+updateAmpLabel();
+
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('over');
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files && fileInput.files[0]) loadFile(fileInput.files[0]);
+});
+
+function loadFile(file) {
+  if (!file.type.startsWith('image/')) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const MAX = 1400;
+    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+
+    canvasIn.width = w; canvasIn.height = h;
+    const ctxIn = canvasIn.getContext('2d');
+    ctxIn.drawImage(img, 0, 0, w, h);
+    sourceData = ctxIn.getImageData(0, 0, w, h);
+
+    canvasOut.width = w; canvasOut.height = h;
+    canvasOut.hidden = true;
+    ph2.hidden = false;
+    ph1.hidden = true;
+    canvasIn.hidden = false;
+    resultData = null;
+    showingDiff = false;
+    outLabel.textContent = 'Shielded';
+    diffBtn.textContent = 'Show difference ×20';
+    diffBtn.disabled = true;
+    downloadBtn.disabled = true;
+    shieldBtn.disabled = false;
+    setStats(null);
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = () => URL.revokeObjectURL(url);
+  img.src = url;
+}
+
+function setStats(s) {
+  document.getElementById('sMean').textContent = s ? s.meanAbs.toFixed(2) : '—';
+  document.getElementById('sMax').textContent = s ? s.maxAbs : '—';
+  document.getElementById('sPct').textContent = s ? s.changedPct.toFixed(0) + '%' : '—';
+  document.getElementById('sPsnr').textContent = s ? s.psnr.toFixed(1) + ' dB' : '—';
+  document.getElementById('sTime').textContent = s ? s.ms + ' ms' : '—';
+}
+
+shieldBtn.addEventListener('click', () => {
+  if (!sourceData) return;
+  shieldBtn.disabled = true;
+  shieldBtn.textContent = 'Working…';
+  // let the browser paint the button state first
+  setTimeout(() => {
+    const t0 = performance.now();
+    const seed = (Math.random() * 0x7FFFFFFF) | 0;
+    const res = shieldPixels(sourceData, modeSel.value, readStrength(), seed);
+    const ms = Math.round(performance.now() - t0);
+
+    resultData = new ImageData(res.data, sourceData.width, sourceData.height);
+    const ctxOut = canvasOut.getContext('2d');
+    ctxOut.putImageData(resultData, 0, 0);
+    canvasOut.hidden = false;
+    ph2.hidden = true;
+
+    setStats({ meanAbs: res.meanAbs, maxAbs: res.maxAbs, changedPct: res.changedPct, psnr: res.psnr, ms });
+    diffBtn.disabled = false;
+    downloadBtn.disabled = false;
+    shieldBtn.disabled = false;
+    shieldBtn.textContent = 'Shield this photo';
+    showingDiff = false;
+  }, 30);
+});
+
+diffBtn.addEventListener('click', () => {
+  if (!sourceData || !resultData) return;
+  const ctxOut = canvasOut.getContext('2d');
+  if (showingDiff) {
+    ctxOut.putImageData(resultData, 0, 0);
+    outLabel.textContent = 'Shielded';
+    diffBtn.textContent = 'Show difference ×20';
+    showingDiff = false;
+    return;
+  }
+  const w = sourceData.width, h = sourceData.height;
+  const a = sourceData.data, b = resultData.data;
+  const diff = new ImageData(w, h);
+  for (let i = 0; i < a.length; i += 4) {
+    // amplified absolute difference, greyscale
+    const d = Math.min(255, Math.abs(b[i] - a[i]) * 20);
+    const v = 255 - d; // noise shows as dark specks on white
+    diff.data[i] = v; diff.data[i + 1] = v; diff.data[i + 2] = v; diff.data[i + 3] = 255;
+  }
+  ctxOut.putImageData(diff, 0, 0);
+  outLabel.textContent = 'Difference ×20';
+  diffBtn.textContent = 'Show shielded';
+  showingDiff = true;
+});
+
+downloadBtn.addEventListener('click', () => {
+  if (!resultData) return;
+  const tmp = document.createElement('canvas');
+  tmp.width = resultData.width; tmp.height = resultData.height;
+  tmp.getContext('2d').putImageData(resultData, 0, 0);
+  const a = document.createElement('a');
+  a.download = 'photoveil-shielded.png';
+  a.href = tmp.toDataURL('image/png');
+  a.click();
+});
+</script>
+</body>
+</html>
