@@ -115,10 +115,19 @@ docs/index.html              the public site, with the JS port of the engine
 ./gradlew assembleRelease      # needs KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
 ```
 
+Signing is applied only when a keystore is passed in through the environment
+(`KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`). Without it
+the release build still runs and produces an **unsigned** APK — so a compile or
+packaging check never needs key material.
+
 Releases are built by `.github/workflows/release.yml` on a `v*` tag: it decodes
 the keystore from repository secrets, builds a signed APK + AAB, verifies the
 signature with `apksigner`, and publishes them to GitHub Releases. The keystore
-is never committed.
+is never committed. To enable that, add four repository secrets —
+`KEYSTORE_BASE64` (base64 of the `.p12`), `KEYSTORE_PASSWORD`, `KEY_ALIAS`,
+`KEY_PASSWORD`. Until they are set, `ci.yml` still publishes an unsigned release
+APK as a workflow artifact that the maintainer signs locally with the permanent
+key.
 
 ```bash
 git tag v1.0.0 && git push origin v1.0.0

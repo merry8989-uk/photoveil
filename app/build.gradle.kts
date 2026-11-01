@@ -20,13 +20,19 @@ android {
 
     // Release signing is read from environment variables so no key material
     // ever lands in the repo. CI decodes the keystore and exports these.
+    // Signing is applied only when a keystore is supplied through the
+    // environment (CI does this from repository secrets). Without it the build
+    // produces an unsigned release APK instead of failing, so a compile or
+    // packaging check never needs key material.
+    val keystorePath: String? = System.getenv("KEYSTORE_PATH")
     signingConfigs {
         create("release") {
-            val path = System.getenv("KEYSTORE_PATH") ?: "release.p12"
-            storeFile = rootProject.file(path)
-            storePassword = System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+            if (!keystorePath.isNullOrBlank()) {
+                storeFile = rootProject.file(keystorePath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
         }
     }
 
@@ -38,7 +44,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = signingConfigs.getByName("release")
+            if (!keystorePath.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         debug {
             applicationIdSuffix = ".debug"

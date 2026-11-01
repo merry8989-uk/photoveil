@@ -145,7 +145,7 @@ class ShieldViewModel(app: Application) : AndroidViewModel(app) {
                 "Shielded ${done.size} image(s). Saved to the Vault."
             }
             if (done.isNotEmpty() && config.autoShareAfterSave) {
-                done.first().file?.let { share(it) }
+                share(done.first())
             }
         }
     }
